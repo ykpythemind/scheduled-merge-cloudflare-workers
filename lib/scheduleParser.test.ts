@@ -29,6 +29,6 @@ aaaa
 /merge-schedule 2021--01T11:00:00+09:00
 aaaaaa
     `)
-    ).toThrowError();
+    ).toThrowError(RangeError);
   });
 });
