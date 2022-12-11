@@ -49,7 +49,37 @@ export default {
       },
     });
 
-    app.webhooks.on("issues.opened", async ({ octokit, payload }) => {
+    app.webhooks.on("pull_request.opened", async ({ octokit, payload }) => {
+      // payload.installation?.id;
+
+      await octokit.request(
+        "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+        {
+          owner: payload.repository.owner.login,
+          repo: payload.repository.name,
+          issue_number: payload.issue.number,
+          body:
+            "Hello there from [Cloudflare Workers](https://github.com/gr2m/cloudflare-worker-github-app-example/#readme)",
+        }
+      );
+    });
+
+    app.webhooks.on("pull_request.edited", async ({ octokit, payload }) => {
+      // payload.installation?.id;
+
+      await octokit.request(
+        "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+        {
+          owner: payload.repository.owner.login,
+          repo: payload.repository.name,
+          issue_number: payload.issue.number,
+          body:
+            "Hello there from [Cloudflare Workers](https://github.com/gr2m/cloudflare-worker-github-app-example/#readme)",
+        }
+      );
+    });
+
+    app.webhooks.on("pull_request.closed", async ({ octokit, payload }) => {
       // payload.installation?.id;
 
       await octokit.request(
