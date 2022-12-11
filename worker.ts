@@ -1,4 +1,8 @@
 import { App } from "@octokit/app";
+import { Octokit } from "@octokit/core";
+import { isSameDay, isSameSecond, parseISO } from "date-fns";
+import { newScheduleModel } from "./lib/db.js";
+import { parseSchedule } from "./lib/scheduleParser.js";
 import { verifyWebhookSignature } from "./lib/verify.js";
 
 export interface Env {
@@ -50,48 +54,170 @@ export default {
     });
 
     app.webhooks.on("pull_request.opened", async ({ octokit, payload }) => {
-      // payload.installation?.id;
+      const installationId = payload.installation?.id;
+      if (!installationId) {
+        app.log.warn("installation not found");
+        return;
+      }
 
-      await octokit.request(
-        "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
-        {
-          owner: payload.repository.owner.login,
-          repo: payload.repository.name,
-          issue_number: payload.issue.number,
-          body:
-            "Hello there from [Cloudflare Workers](https://github.com/gr2m/cloudflare-worker-github-app-example/#readme)",
+      const scheduleInput = parseSchedule(payload.pull_request.body);
+      if (!scheduleInput) {
+        return;
+      }
+      const repositoryOwner = payload.repository.owner.login;
+      const repositoryName = payload.repository.name;
+      const pullRequestNumber = payload.pull_request.number;
+
+      const dbSchedules = newScheduleModel(env.DB);
+      const existingScheduleOnDB = await dbSchedules.First({
+        where: {
+          installationId,
+          repositoryOwner,
+          repositoryName,
+          pullRequestNumber,
+        },
+      });
+
+      if (existingScheduleOnDB) {
+        if (
+          isSameSecond(
+            parseISO(existingScheduleOnDB.willMergeAt),
+            parseISO(scheduleInput.willMergeAtUtc)
+          )
+        ) {
+          app.log.info("same schedule exsits, ignore...");
+          return;
         }
+      }
+
+      // いったん削除してから追加
+      await dbSchedules.Delete({
+        where: {
+          installationId,
+          repositoryName,
+          repositoryOwner,
+          pullRequestNumber,
+        },
+      });
+      await dbSchedules.InsertOne({
+        installationId,
+        repositoryName,
+        repositoryOwner,
+        pullRequestNumber,
+        willMergeAt: scheduleInput.willMergeAtUtc,
+      });
+
+      await addPullRequestComment(
+        octokit,
+        {
+          owner: repositoryOwner,
+          name: repositoryName,
+          id: pullRequestNumber,
+        },
+        `Scheduled to merge at ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
       );
     });
 
     app.webhooks.on("pull_request.edited", async ({ octokit, payload }) => {
-      // payload.installation?.id;
+      const installationId = payload.installation?.id;
+      if (!installationId) {
+        app.log.warn("installation not found");
+        return;
+      }
 
-      await octokit.request(
-        "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
-        {
-          owner: payload.repository.owner.login,
-          repo: payload.repository.name,
-          issue_number: payload.issue.number,
-          body:
-            "Hello there from [Cloudflare Workers](https://github.com/gr2m/cloudflare-worker-github-app-example/#readme)",
+      const scheduleInput = parseSchedule(payload.pull_request.body);
+      if (!scheduleInput) {
+        return;
+      }
+      const repositoryOwner = payload.repository.owner.login;
+      const repositoryName = payload.repository.name;
+      const pullRequestNumber = payload.pull_request.number;
+
+      const dbSchedules = newScheduleModel(env.DB);
+      const existingScheduleOnDB = await dbSchedules.First({
+        where: {
+          installationId,
+          repositoryOwner,
+          repositoryName,
+          pullRequestNumber,
+        },
+      });
+
+      if (existingScheduleOnDB) {
+        if (
+          isSameSecond(
+            parseISO(existingScheduleOnDB.willMergeAt),
+            parseISO(scheduleInput.willMergeAtUtc)
+          )
+        ) {
+          app.log.info("same schedule exsits, ignore...");
+          return;
+        } else {
+          app.log.info("schedule changed, update");
+          await dbSchedules.Update({
+            where: {
+              id: existingScheduleOnDB.id,
+            },
+            data: { willMergeAt: scheduleInput.willMergeAtUtc },
+          });
+
+          await addPullRequestComment(
+            octokit,
+            {
+              owner: repositoryOwner,
+              name: repositoryName,
+              id: pullRequestNumber,
+            },
+            `MergeSchedule Updated : ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
+          );
+          return;
         }
+      }
+
+      await dbSchedules.InsertOne({
+        installationId,
+        repositoryName,
+        repositoryOwner,
+        pullRequestNumber,
+        willMergeAt: scheduleInput.willMergeAtUtc,
+      });
+
+      await addPullRequestComment(
+        octokit,
+        {
+          owner: repositoryOwner,
+          name: repositoryName,
+          id: pullRequestNumber,
+        },
+        `Scheduled to merge at ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
       );
     });
 
     app.webhooks.on("pull_request.closed", async ({ octokit, payload }) => {
-      // payload.installation?.id;
+      const installationId = payload.installation?.id;
+      if (!installationId) {
+        app.log.warn("installation not found");
+        return;
+      }
 
-      await octokit.request(
-        "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
-        {
-          owner: payload.repository.owner.login,
-          repo: payload.repository.name,
-          issue_number: payload.issue.number,
-          body:
-            "Hello there from [Cloudflare Workers](https://github.com/gr2m/cloudflare-worker-github-app-example/#readme)",
-        }
-      );
+      const repositoryOwner = payload.repository.owner.login;
+      const repositoryName = payload.repository.name;
+      const pullRequestNumber = payload.pull_request.number;
+
+      // 予定を削除する
+      const dbSchedules = newScheduleModel(env.DB);
+      const existingScheduleOnDB = await dbSchedules.First({
+        where: {
+          installationId,
+          repositoryName,
+          repositoryOwner,
+          pullRequestNumber,
+        },
+      });
+      if (existingScheduleOnDB) {
+        await dbSchedules.Delete({ where: { id: existingScheduleOnDB.id } });
+        app.log.info("schedule deleted");
+      }
     });
 
     if (request.method === "GET") {
@@ -156,4 +282,30 @@ export default {
       });
     }
   },
+};
+
+async function addPullRequestComment(
+  octokit: Octokit,
+  pullRequest: PullRequest,
+  body: string
+) {
+  try {
+    await octokit.request(
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+      {
+        owner: pullRequest.owner,
+        repo: pullRequest.name,
+        issue_number: pullRequest.id,
+        body,
+      }
+    );
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+type PullRequest = {
+  owner: string;
+  name: string;
+  id: number;
 };
