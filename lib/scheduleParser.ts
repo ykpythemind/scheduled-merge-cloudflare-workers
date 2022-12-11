@@ -23,7 +23,12 @@ export function parseSchedule(
       try {
         mergeSchedule = parseISO(base).toISOString();
       } catch (e) {
-        error = e.message;
+        if (e instanceof Error) {
+          error = e.message;
+        } else {
+          error = "something wrong";
+        }
+
         return;
       }
     }

@@ -139,6 +139,11 @@ export default {
         return;
       }
 
+      if (payload.pull_request.state === "closed") {
+        app.log.info("pull request is closed, ignore...");
+        return;
+      }
+
       const dbSchedules = newScheduleModel(env.DB);
       const repositoryOwner = payload.repository.owner.login;
       const repositoryName = payload.repository.name;
@@ -256,7 +261,6 @@ export default {
         );
       } catch (e) {
         console.error(e);
-        console.error(e.cause);
       }
     });
 
@@ -328,6 +332,7 @@ export default {
     try {
       await app.webhooks.receive({
         id: id!,
+        // @ts-expect-error
         name: name!,
         payload,
       });
