@@ -114,7 +114,7 @@ export default {
           name: repositoryName,
           id: pullRequestNumber,
         },
-        `Scheduled to merge at ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
+        `Merge schedule created. : ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
       );
     });
 
@@ -163,7 +163,7 @@ export default {
             name: repositoryName,
             id: pullRequestNumber,
           },
-          `MergeSchedule Deleted`
+          `Merge schedule deleted.`
         );
         return;
       }
@@ -224,7 +224,7 @@ export default {
             name: repositoryName,
             id: pullRequestNumber,
           },
-          `Scheduled to merge at ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
+          `Merge schedule created. : ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
         );
       } catch (e) {
         console.error(e);
