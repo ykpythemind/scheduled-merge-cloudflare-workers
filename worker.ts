@@ -134,63 +134,68 @@ export default {
       const pullRequestNumber = payload.pull_request.number;
 
       const dbSchedules = newScheduleModel(env.DB);
-      const existingScheduleOnDB = await dbSchedules.First({
-        where: {
-          installationId,
-          repositoryOwner,
-          repositoryName,
-          pullRequestNumber,
-        },
-      });
+      try {
+        const existingScheduleOnDB = await dbSchedules.First({
+          where: {
+            installationId,
+            repositoryOwner,
+            repositoryName,
+            pullRequestNumber,
+          },
+        });
 
-      if (existingScheduleOnDB) {
-        if (
-          isSameSecond(
-            parseISO(existingScheduleOnDB.willMergeAt),
-            parseISO(scheduleInput.willMergeAtUtc)
-          )
-        ) {
-          app.log.info("same schedule exsits, ignore...");
-          return;
-        } else {
-          app.log.info("schedule changed, update");
-          await dbSchedules.Update({
-            where: {
-              id: existingScheduleOnDB.id,
-            },
-            data: { willMergeAt: scheduleInput.willMergeAtUtc },
-          });
+        if (existingScheduleOnDB) {
+          if (
+            isSameSecond(
+              parseISO(existingScheduleOnDB.willMergeAt),
+              parseISO(scheduleInput.willMergeAtUtc)
+            )
+          ) {
+            app.log.info("same schedule exsits, ignore...");
+            return;
+          } else {
+            app.log.info("schedule changed, update");
+            await dbSchedules.Update({
+              where: {
+                id: existingScheduleOnDB.id,
+              },
+              data: { willMergeAt: scheduleInput.willMergeAtUtc },
+            });
 
-          await addPullRequestComment(
-            octokit,
-            {
-              owner: repositoryOwner,
-              name: repositoryName,
-              id: pullRequestNumber,
-            },
-            `MergeSchedule Updated : ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
-          );
-          return;
+            await addPullRequestComment(
+              octokit,
+              {
+                owner: repositoryOwner,
+                name: repositoryName,
+                id: pullRequestNumber,
+              },
+              `MergeSchedule Updated : ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
+            );
+            return;
+          }
         }
+
+        await dbSchedules.InsertOne({
+          installationId,
+          repositoryName,
+          repositoryOwner,
+          pullRequestNumber,
+          willMergeAt: scheduleInput.willMergeAtUtc,
+        });
+
+        await addPullRequestComment(
+          octokit,
+          {
+            owner: repositoryOwner,
+            name: repositoryName,
+            id: pullRequestNumber,
+          },
+          `Scheduled to merge at ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
+        );
+      } catch (e) {
+        console.error(e);
+        console.error(e.cause);
       }
-
-      await dbSchedules.InsertOne({
-        installationId,
-        repositoryName,
-        repositoryOwner,
-        pullRequestNumber,
-        willMergeAt: scheduleInput.willMergeAtUtc,
-      });
-
-      await addPullRequestComment(
-        octokit,
-        {
-          owner: repositoryOwner,
-          name: repositoryName,
-          id: pullRequestNumber,
-        },
-        `Scheduled to merge at ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
-      );
     });
 
     app.webhooks.on("pull_request.closed", async ({ octokit, payload }) => {
