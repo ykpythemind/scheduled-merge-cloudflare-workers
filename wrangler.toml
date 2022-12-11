@@ -1,5 +1,5 @@
 name = "scheduled-merge-cloudflare-workers"
-# account_id = "f8d9cac88285c4d654ba305a92e952d6"
+account_id = "b9d9f39f61032e736a07fa0653d76c23"
 workers_dev = true
 
 main = "worker.ts"
