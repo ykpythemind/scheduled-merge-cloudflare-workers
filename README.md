@@ -19,6 +19,13 @@ wrangler dev --test-scheduled
 curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"
 ```
 
+### DB
+
+```
+// prepare
+wrangler d1 execute scheduled-merge-staging --local --file=schema.sql
+```
+
 ---
 
 ## original README.md
