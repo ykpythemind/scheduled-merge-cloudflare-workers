@@ -8,3 +8,5 @@ node_compat = true
 
 # [triggers]
 # crons = [ "* * * * *" ]
+
+[env.staging]
