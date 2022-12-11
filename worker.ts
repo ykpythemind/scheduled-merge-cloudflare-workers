@@ -203,7 +203,7 @@ export default {
                 name: repositoryName,
                 id: pullRequestNumber,
               },
-              `MergeSchedule Updated : ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
+              `Merge schedule updated : ${scheduleInput.willMergeAtOriginal} (${scheduleInput.willMergeAtUtc})`
             );
             return;
           }
