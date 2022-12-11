@@ -125,15 +125,49 @@ export default {
         return;
       }
 
-      const scheduleInput = parseSchedule(payload.pull_request.body);
-      if (!scheduleInput) {
-        return;
-      }
+      const dbSchedules = newScheduleModel(env.DB);
       const repositoryOwner = payload.repository.owner.login;
       const repositoryName = payload.repository.name;
       const pullRequestNumber = payload.pull_request.number;
 
-      const dbSchedules = newScheduleModel(env.DB);
+      const scheduleInput = parseSchedule(payload.pull_request.body);
+      if (!scheduleInput) {
+        const existingSchedulesOnDB = await dbSchedules.All({
+          where: {
+            installationId,
+            repositoryOwner,
+            repositoryName,
+            pullRequestNumber,
+          },
+        });
+
+        if (!existingSchedulesOnDB.results) return;
+
+        if (existingSchedulesOnDB.results.length === 0) return;
+
+        app.log.info("try to delete schedule");
+
+        await dbSchedules.Delete({
+          where: {
+            installationId,
+            repositoryOwner,
+            repositoryName,
+            pullRequestNumber,
+          },
+        });
+
+        await addPullRequestComment(
+          octokit,
+          {
+            owner: repositoryOwner,
+            name: repositoryName,
+            id: pullRequestNumber,
+          },
+          `MergeSchedule Deleted`
+        );
+        return;
+      }
+
       try {
         const existingScheduleOnDB = await dbSchedules.First({
           where: {
