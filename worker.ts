@@ -360,98 +360,102 @@ export default {
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
-    const now = new Date();
-    console.log(`tick ${now}`);
+    const fn = async () => {
+      const now = new Date();
+      console.log(`tick ${now}`);
 
-    const appId = env.APP_ID;
-    const secret = env.WEBHOOK_SECRET;
-    const privateKey = env.PRIVATE_KEY;
+      const appId = env.APP_ID;
+      const secret = env.WEBHOOK_SECRET;
+      const privateKey = env.PRIVATE_KEY;
 
-    const scheduleDB = newScheduleModel(env.DB);
+      const scheduleDB = newScheduleModel(env.DB);
 
-    const { results } = await env.DB.prepare(
-      "SELECT * FROM mergeSchedules WHERE willMergeAt < ?"
-    )
-      .bind(now.toISOString())
-      .all<MergeSchedule>();
+      const { results } = await env.DB.prepare(
+        "SELECT * FROM mergeSchedules WHERE willMergeAt < ?"
+      )
+        .bind(now.toISOString())
+        .all<MergeSchedule>();
 
-    if (!results) {
-      return;
-    }
+      if (!results) {
+        return;
+      }
 
-    // https://github.com/octokit/app.js/#readme
-    const app = new App({
-      appId,
-      privateKey,
-      webhooks: {
-        secret,
-      },
-    });
+      // https://github.com/octokit/app.js/#readme
+      const app = new App({
+        appId,
+        privateKey,
+        webhooks: {
+          secret,
+        },
+      });
 
-    for (const schedule of results) {
-      try {
-        const octokit = await app.getInstallationOctokit(
-          schedule.installationId
-        );
-
-        const pull = await octokit.request(
-          "GET /repos/{owner}/{repo}/pulls/{pull_number}",
-          {
-            owner: schedule.repositoryOwner,
-            repo: schedule.repositoryName,
-            pull_number: schedule.pullRequestNumber,
-          }
-        );
-
-        if (pull.data.state !== "open") {
-          console.warn("pull request is not open. ignore");
-
-          await scheduleDB.Delete({ where: { id: schedule.id } });
-          await addPullRequestComment(
-            octokit,
-            {
-              owner: schedule.repositoryOwner,
-              name: schedule.repositoryName,
-              id: schedule.pullRequestNumber,
-            },
-            "⚠ Scheduled merge canceled because pull request is not open. (Schedule is deleted)"
-          );
-          continue;
-        }
-
+      for (const schedule of results) {
         try {
-          // try merge
-          await octokit.request(
-            "POST /repos/{owner}/{repo}/pulls/{pull_number}/merge",
+          const octokit = await app.getInstallationOctokit(
+            schedule.installationId
+          );
+
+          const pull = await octokit.request(
+            "GET /repos/{owner}/{repo}/pulls/{pull_number}",
             {
               owner: schedule.repositoryOwner,
               repo: schedule.repositoryName,
               pull_number: schedule.pullRequestNumber,
-              //       merge_method: "squash",
             }
           );
-          await scheduleDB.Delete({ where: { id: schedule.id } });
-          await addPullRequestComment(
-            octokit,
-            {
-              owner: schedule.repositoryOwner,
-              name: schedule.repositoryName,
-              id: schedule.pullRequestNumber,
-            },
-            "Pull request merged by Scheduled-merge."
-          );
+
+          if (pull.data.state !== "open") {
+            console.warn("pull request is not open. ignore");
+
+            await scheduleDB.Delete({ where: { id: schedule.id } });
+            await addPullRequestComment(
+              octokit,
+              {
+                owner: schedule.repositoryOwner,
+                name: schedule.repositoryName,
+                id: schedule.pullRequestNumber,
+              },
+              "⚠ Scheduled merge canceled because pull request is not open. (Schedule is deleted)"
+            );
+            continue;
+          }
+
+          try {
+            // try merge
+            await octokit.request(
+              "POST /repos/{owner}/{repo}/pulls/{pull_number}/merge",
+              {
+                owner: schedule.repositoryOwner,
+                repo: schedule.repositoryName,
+                pull_number: schedule.pullRequestNumber,
+                //       merge_method: "squash",
+              }
+            );
+            await scheduleDB.Delete({ where: { id: schedule.id } });
+            await addPullRequestComment(
+              octokit,
+              {
+                owner: schedule.repositoryOwner,
+                name: schedule.repositoryName,
+                id: schedule.pullRequestNumber,
+              },
+              "Pull request merged by Scheduled-merge."
+            );
+          } catch (e) {
+            // マージできなかった場合 一旦無視
+            console.error(e);
+            app.log.error("error on schedule iteration");
+            app.log.error(JSON.stringify(e));
+          }
         } catch (e) {
-          // マージできなかった場合 一旦無視
-          console.error(e);
-          app.log.error("error on schedule iteration");
-          app.log.error(JSON.stringify(e));
+          app.log.warn("error on schedule iteration");
+          app.log.warn(JSON.stringify(e));
+          continue;
         }
-      } catch (e) {
-        app.log.warn("error on schedule iteration");
-        app.log.warn(JSON.stringify(e));
-        continue;
       }
-    }
+    };
+
+    ctx.waitUntil(fn());
   },
 };
 // async function postToSlack(webhookUrl: string, message: string) {
