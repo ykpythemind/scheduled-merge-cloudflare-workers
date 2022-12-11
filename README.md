@@ -6,10 +6,10 @@
 npm i
 ```
 
-.dev.vars以下にpatを入れる
+.dev.vars以下に環境変数を設定する
 
 ```
-GITHUB_TOKEN = "hogehoge"
+HOGE = ""
 ```
 
 https://developers.cloudflare.com/workers/runtime-apis/scheduled-event/
@@ -24,6 +24,11 @@ curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"
 ```
 // prepare
 wrangler d1 execute scheduled-merge-staging --local --file=schema.sql
+```
+
+```
+// 本番反映
+wrangler d1 execute scheduled-merge-staging --file=schema.sql
 ```
 
 ---
