@@ -19,7 +19,7 @@ aaaa
 /merge-schedule 2021-03-01T11:00:00+09:00
 aaaaaa
     `)
-    ).toEqual({ willMergeAt: "2021-03-01T02:00:00.000Z" });
+    ).toEqual({ willMergeAtUtc: "2021-03-01T02:00:00.000Z" });
   });
 
   test("invalid", () => {

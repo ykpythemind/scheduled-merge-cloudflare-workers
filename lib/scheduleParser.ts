@@ -1,7 +1,7 @@
 import { parseISO } from "date-fns";
 
 type MergeScheduleConfig = {
-  willMergeAt: string; // utc
+  willMergeAtUtc: string; // utc
 };
 
 export function parseSchedule(
@@ -20,7 +20,7 @@ export function parseSchedule(
     }
   });
 
-  return mergeSchedule ? { willMergeAt: mergeSchedule } : null;
+  return mergeSchedule ? { willMergeAtUtc: mergeSchedule } : null;
 }
 
 const magicComment = "/merge-schedule";
