@@ -423,7 +423,7 @@ export default {
           try {
             // try merge
             await octokit.request(
-              "POST /repos/{owner}/{repo}/pulls/{pull_number}/merge",
+              "PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge",
               {
                 owner: schedule.repositoryOwner,
                 repo: schedule.repositoryName,
