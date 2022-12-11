@@ -1,13 +1,26 @@
 import { App } from "@octokit/app";
 import { verifyWebhookSignature } from "./lib/verify.js";
 
-export default {
-  /**
-   * @param {Request} request
-   * @param {Record<string, any>} env
-   */
-  async fetch(request, env) {
+export interface Env {
+  // Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
+  // MY_KV_NAMESPACE: KVNamespace;
+  //
+  // Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
+  // MY_DURABLE_OBJECT: DurableObjectNamespace;
+  //
+  // Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
+  // MY_BUCKET: R2Bucket;
 
+  // GITHUB_TOKEN: string;
+  SLACK_WEBHOOK_URL: string;
+
+  APP_ID: string;
+  WEBHOOK_SECRET: string;
+  PRIVATE_KEY: string;
+}
+
+export default {
+  async fetch(request: Request, env: Env) {
     // wrangler secret put APP_ID
     const appId = env.APP_ID;
     // wrangler secret put WEBHOOK_SECRET
@@ -54,7 +67,7 @@ export default {
         `<h1>Cloudflare Worker Example GitHub app</h1>
 
 <p>Installation count: ${data.installations_count}</p>
-    
+
 <p><a href="https://github.com/apps/cloudflare-worker-example">Install</a> | <a href="https://github.com/gr2m/cloudflare-worker-github-app-example/#readme">source code</a></p>`,
         {
           headers: { "content-type": "text/html" },
@@ -72,8 +85,13 @@ export default {
     try {
       await verifyWebhookSignature(payloadString, signature, secret);
     } catch (error) {
-      app.log.warn(error.message);
-      return new Response(`{ "error": "${error.message}" }`, {
+      let errorMessage = "something wrong";
+
+      if (error instanceof Error) {
+        app.log.warn(error.message);
+        errorMessage = error.message;
+      }
+      return new Response(`{ "error": "${errorMessage}" }`, {
         status: 400,
         headers: { "content-type": "application/json" },
       });
@@ -82,8 +100,8 @@ export default {
     // Now handle the request
     try {
       await app.webhooks.receive({
-        id,
-        name,
+        id: id!,
+        name: name!,
         payload,
       });
 
@@ -91,9 +109,14 @@ export default {
         headers: { "content-type": "application/json" },
       });
     } catch (error) {
-      app.log.error(error);
+      let errorMessage = "something wrong";
 
-      return new Response(`{ "error": "${error.message}" }`, {
+      if (error instanceof Error) {
+        app.log.error(error.message);
+        errorMessage = error.message;
+      }
+
+      return new Response(`{ "error": "${errorMessage}" }`, {
         status: 500,
         headers: { "content-type": "application/json" },
       });

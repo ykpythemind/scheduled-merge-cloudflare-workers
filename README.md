@@ -1,4 +1,29 @@
-# cloudflare-worker-github-app-example
+# scheduled-merge-cloudflare-workers
+
+## development
+
+```
+npm i
+```
+
+.dev.vars以下にpatを入れる
+
+```
+GITHUB_TOKEN = "hogehoge"
+```
+
+https://developers.cloudflare.com/workers/runtime-apis/scheduled-event/
+
+```
+wrangler dev --test-scheduled
+curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"
+```
+
+---
+
+## original README.md
+
+https://github.com/gr2m/cloudflare-worker-github-app-example/blob/5a0d0bec9c096f5a922acbbaa9fe2da882093985/README.md
 
 > A Cloudflare Worker + GitHub App Example
 
