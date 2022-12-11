@@ -21,6 +21,8 @@ export interface Env {
 
 export default {
   async fetch(request: Request, env: Env) {
+    let a = "";
+    a = 0;
     // wrangler secret put APP_ID
     const appId = env.APP_ID;
     // wrangler secret put WEBHOOK_SECRET
