@@ -6,8 +6,8 @@ main = "worker.ts"
 compatibility_date = "2022-12-10"
 node_compat = true
 
-# [triggers]
-# crons = [ "* * * * *" ]
+[triggers]
+crons = [ "*/3 * * * *" ]
 
 [env.staging]
 
