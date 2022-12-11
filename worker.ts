@@ -60,13 +60,27 @@ export default {
         return;
       }
 
+      const repositoryOwner = payload.repository.owner.login;
+      const repositoryName = payload.repository.name;
+      const pullRequestNumber = payload.pull_request.number;
+
       const scheduleInput = parseSchedule(payload.pull_request.body);
       if (!scheduleInput) {
         return;
       }
-      const repositoryOwner = payload.repository.owner.login;
-      const repositoryName = payload.repository.name;
-      const pullRequestNumber = payload.pull_request.number;
+      if ("error" in scheduleInput) {
+        await addPullRequestComment(
+          octokit,
+          {
+            owner: repositoryOwner,
+            name: repositoryName,
+            id: pullRequestNumber,
+          },
+          `Merge schedule error: ${scheduleInput.error}`
+        );
+
+        return;
+      }
 
       const dbSchedules = newScheduleModel(env.DB);
       const existingScheduleOnDB = await dbSchedules.First({
@@ -165,6 +179,20 @@ export default {
           },
           `Merge schedule deleted.`
         );
+        return;
+      }
+
+      if ("error" in scheduleInput) {
+        await addPullRequestComment(
+          octokit,
+          {
+            owner: repositoryOwner,
+            name: repositoryName,
+            id: pullRequestNumber,
+          },
+          `Merge schedule error: ${scheduleInput.error}`
+        );
+
         return;
       }
 

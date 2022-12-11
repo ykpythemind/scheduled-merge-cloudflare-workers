@@ -7,11 +7,12 @@ type MergeScheduleConfig = {
 
 export function parseSchedule(
   pullRequestDescription: string
-): MergeScheduleConfig | null {
+): MergeScheduleConfig | { error: string } | null {
   const lines = pullRequestDescription.split(/\r\n|\n/);
 
   let mergeSchedule: string | null = null;
   let mergeScheduleOriginal = "";
+  let error: string | null = null;
 
   lines.forEach((line) => {
     if (line.startsWith(magicComment)) {
@@ -19,9 +20,18 @@ export function parseSchedule(
 
       // toISOStringは常に0 UTCオフセットになる
       mergeScheduleOriginal = base;
-      mergeSchedule = parseISO(base).toISOString();
+      try {
+        mergeSchedule = parseISO(base).toISOString();
+      } catch (e) {
+        error = e.message;
+        return;
+      }
     }
   });
+
+  if (error) {
+    return { error: `ParseError : ${error}` };
+  }
 
   return mergeSchedule
     ? {
