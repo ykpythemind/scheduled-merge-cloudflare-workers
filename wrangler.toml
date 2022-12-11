@@ -10,7 +10,8 @@ node_compat = true
 # crons = [ "* * * * *" ]
 
 [env.staging]
-[[ d1_databases ]]
+
+[[ env.staging.d1_databases ]]
 binding = "DB"
 database_name = "scheduled-merge-staging"
 database_id = "5488b320-e35e-4b31-83f8-e9f0e4a3f331"
