@@ -40,4 +40,4 @@ export function newScheduleModel(db: D1Database) {
   return schedules;
 }
 
-export type mergeSchedules = Infer<ReturnType<typeof newScheduleModel>>;
+export type MergeSchedule = Infer<ReturnType<typeof newScheduleModel>>;
