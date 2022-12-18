@@ -3,10 +3,10 @@
 ## development
 
 ```
-npm i
+yarn
 ```
 
-.dev.vars以下に環境変数を設定する
+以下に開発環境で環境変数を設定する場合は.dev.varsファイルを作って以下のように
 
 ```
 HOGE = ""

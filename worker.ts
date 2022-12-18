@@ -1,6 +1,6 @@
 import { App } from "@octokit/app";
 import { Octokit } from "@octokit/core";
-import { isSameDay, isSameSecond, parseISO } from "date-fns";
+import { isSameSecond, parseISO } from "date-fns";
 import { MergeSchedule, newScheduleModel } from "./lib/db.js";
 import { parseSchedule } from "./lib/scheduleParser.js";
 import { verifyWebhookSignature } from "./lib/verify.js";
@@ -11,6 +11,8 @@ export interface Env {
   APP_ID: string;
   WEBHOOK_SECRET: string;
   PRIVATE_KEY: string;
+
+  IGNORE_SIGNATURE_CHECK: string | null;
 }
 
 export default {
@@ -283,11 +285,11 @@ export default {
       const { data } = await app.octokit.request("GET /app");
 
       return new Response(
-        `<h1>Cloudflare Worker Example GitHub app</h1>
+        `<h1>Scheduled-merge GitHub app</h1>
 
 <p>Installation count: ${data.installations_count}</p>
 
-<p><a href="https://github.com/apps/cloudflare-worker-example">Install</a> | <a href="https://github.com/gr2m/cloudflare-worker-github-app-example/#readme">source code</a></p>`,
+<p><a href="#">Install (TODO)</a> | <a href="https://github.com/ykpythemind/scheduled-merge-cloudflare-workers">source code</a></p>`,
         {
           headers: { "content-type": "text/html" },
         }
@@ -302,7 +304,10 @@ export default {
 
     // Verify webhook signature
     try {
-      await verifyWebhookSignature(payloadString, signature, secret);
+      const check = env.IGNORE_SIGNATURE_CHECK !== "true";
+      if (check) {
+        await verifyWebhookSignature(payloadString, signature, secret);
+      }
     } catch (error) {
       let errorMessage = "something wrong";
 
